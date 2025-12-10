@@ -1,0 +1,19 @@
+from django.contrib import admin
+
+from .models import User
+
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = (
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'role',
+    )
+    list_filter = ('role', 'is_active',)
+    list_editable = ('role',)
+    search_fields = ('username', 'email',)
+
+
+admin.site.register(User, UserAdmin)

@@ -140,3 +140,11 @@ dmypy.json
 
 static/
 media/
+
+.DS_Store
+
+backend/.env
+backend/.venv
+backend/.venv/
+backend/.env/
+backend/env/
