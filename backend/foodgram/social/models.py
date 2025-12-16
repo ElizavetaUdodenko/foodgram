@@ -88,7 +88,7 @@ class Recipe(TimeStampedModel):
     name = models.CharField('Название', max_length=NAME_MAX_LENGTH)
     image = models.ImageField(
         'Изображение',
-        upload_to='media/recipes/',
+        upload_to='recipes/images/',
         null=True,
         blank=True
     )
