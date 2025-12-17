@@ -1,13 +1,13 @@
 from django.contrib import admin
 
-from .models import Tag, Ingredient, Recipe
+from .models import Ingredient, Recipe, Tag
 
 
 class TagAdmin(admin.ModelAdmin):
-    list_display = ('tag', 'slug',)
-    list_display_links = ('tag',)
+    list_display = ('name', 'slug',)
+    list_display_links = ('name',)
     list_editable = ('slug',)
-    search_fields = ('tag', 'slug',)
+    search_fields = ('name', 'slug',)
 
 
 class IngredientAdmin(admin.ModelAdmin):

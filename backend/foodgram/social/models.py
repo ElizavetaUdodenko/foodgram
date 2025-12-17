@@ -1,19 +1,18 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Q, F
+from django.db.models import F, Q
 
 from core.models import TimeStampedModel
-from .constants import (
-    NAME_MAX_LENGTH, COOKING_TIME_MIN, UNIT_MAX_LENGTH, INGREDIENT_MAX_LENGTH
-)
 
+from .constants import (COOKING_TIME_MIN, INGREDIENT_MAX_LENGTH,
+                        NAME_MAX_LENGTH, UNIT_MAX_LENGTH)
 
 User = get_user_model()
 
 
 class Tag(TimeStampedModel):
-    tag = models.CharField(
+    name = models.CharField(
         'Тег',
         max_length=UNIT_MAX_LENGTH,
         unique=True,

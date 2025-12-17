@@ -66,7 +66,6 @@ class User(AbstractUser):
     def is_admin(self):
         return self.role == self.Role.ADMIN or self.is_superuser
 
-
     def delete_avatar(self):
         if self.avatar:
             self.avatar.delete(save=False)

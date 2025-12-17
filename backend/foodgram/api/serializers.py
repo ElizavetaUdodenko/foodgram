@@ -1,10 +1,12 @@
+import base64
+
+from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from djoser.serializers import UserCreateSerializer as BaseCreateSerializer
 from djoser.serializers import UserSerializer as BaseSerializer
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-import base64
-from django.core.files.base import ContentFile
+from social.models import Tag
 
 
 User = get_user_model()
@@ -37,7 +39,7 @@ class UserSerializer(BaseSerializer):
 
 
 class UserCreateSerializer(BaseCreateSerializer):
-    
+
     class Meta(BaseCreateSerializer.Meta):
         model = User
         fields = (
@@ -65,3 +67,11 @@ class AvatarUploadSerializer(serializers.Serializer):
             instance.save()
 
         return instance
+
+
+class TagSerializer(serializers.ModelSerializer):
+
+    class Meta():
+        model = Tag
+        fields = ('id', 'name', 'slug',)
+        read_only_fields = ('id', 'name', 'slug',)
