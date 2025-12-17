@@ -4,9 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core.pagination import PageNumberLimitPagination
-from social.models import Tag
-from .serializers import AvatarUploadSerializer, TagSerializer
+from social.models import Recipe, Tag
+from .serializers import (
+    AvatarUploadSerializer,
+    RecipeSerializer,
+    TagSerializer
+)
 
 
 class ListRetrieveViewSet(
@@ -17,9 +20,9 @@ class ListRetrieveViewSet(
 
 class UserViewSet(BaseUserViewSet):
 
-    pagination_class = PageNumberLimitPagination
-
     def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
         if self.action == 'me':
             return [IsAuthenticated()]
         return super().get_permissions()
@@ -55,3 +58,14 @@ class TagViewSet(ListRetrieveViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
+
+
+class RecipeViewSet(viewsets.ModelViewSet):
+    queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()

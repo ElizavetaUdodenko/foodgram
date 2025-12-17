@@ -11,10 +11,10 @@ class TagAdmin(admin.ModelAdmin):
 
 
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('ingredient', 'unit',)
-    list_display_links = ('ingredient',)
-    list_editable = ('unit',)
-    search_fields = ('ingredient',)
+    list_display = ('name', 'measurement_unit',)
+    list_display_links = ('name',)
+    list_editable = ('measurement_unit',)
+    search_fields = ('name',)
 
 
 class RecipeAdmin(admin.ModelAdmin):

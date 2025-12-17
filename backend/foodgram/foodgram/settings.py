@@ -90,6 +90,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.PageNumberLimitPagination',
 }
 
 DJOSER = {
@@ -102,10 +103,6 @@ DJOSER = {
     },
     'VIEWS': {
         'user_viewset': 'api.views.UserViewSet',
-    },
-    'PERMISSIONS': {
-        'user': ['rest_framework.permissions.AllowAny'],
-        'user_list': ['rest_framework.permissions.AllowAny'],
     },
 }
 

@@ -56,14 +56,14 @@ class RecipeIngredient(models.Model):
 
 
 class Ingredient(TimeStampedModel):
-    ingredient = models.CharField(
+    name = models.CharField(
         'Ингредиент',
         max_length=INGREDIENT_MAX_LENGTH,
         unique=True,
         blank=False,
         null=False
     )
-    unit = models.CharField(
+    measurement_unit = models.CharField(
         'Единица измерения',
         max_length=UNIT_MAX_LENGTH,
         blank=False,
