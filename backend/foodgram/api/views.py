@@ -1,12 +1,13 @@
 from djoser.views import UserViewSet as BaseUserViewSet
-from rest_framework import mixins, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from social.models import Recipe, Tag
+from social.models import Ingredient, Recipe, Tag
 from .serializers import (
     AvatarUploadSerializer,
+    IngredientSerializer,
     RecipeSerializer,
     TagSerializer
 )
@@ -30,7 +31,7 @@ class UserViewSet(BaseUserViewSet):
     @action(
         detail=False,
         methods=['put'],
-        permission_classes=[IsAuthenticated],
+        permission_classes=(IsAuthenticated,),
         url_path='me/avatar'
     )
     def avatar(self, request):
@@ -57,8 +58,17 @@ class UserViewSet(BaseUserViewSet):
 class TagViewSet(ListRetrieveViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)
     pagination_class = None
+
+
+class IngredientViewSet(ListRetrieveViewSet):
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    permission_classes = (AllowAny,)
+    pagination_class = None
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('^name',)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):

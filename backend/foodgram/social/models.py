@@ -30,7 +30,7 @@ class Tag(TimeStampedModel):
         verbose_name_plural = 'Теги'
 
     def __str__(self):
-        return f'Тег: {self.tag}'
+        return f'Тег: {self.name}'
 
 
 class RecipeIngredient(models.Model):
@@ -75,7 +75,7 @@ class Ingredient(TimeStampedModel):
         verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
-        return f'Ингредиент {self.ingredient} измеряется в {self.unit}.'
+        return f'Ингредиент {self.name} измеряется в {self.measurement_unit}.'
 
 
 class Recipe(TimeStampedModel):

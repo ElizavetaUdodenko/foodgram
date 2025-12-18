@@ -19,7 +19,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    # 'django_filters',
+    'django_filters',
     'users.apps.UsersConfig',
     'api.apps.ApiConfig',
     'core.apps.CoreConfig',
@@ -91,6 +91,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.PageNumberLimitPagination',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'SEARCH_PARAM': 'name',
 }
 
 DJOSER = {
