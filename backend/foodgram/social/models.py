@@ -1,3 +1,6 @@
+import random
+import string
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -5,10 +8,19 @@ from django.db.models import F, Q
 
 from core.models import TimeStampedModel
 
-from .constants import (COOKING_TIME_MIN, INGREDIENT_MAX_LENGTH,
-                        NAME_MAX_LENGTH, UNIT_MAX_LENGTH)
+from .constants import (
+    COOKING_TIME_MIN,
+    INGREDIENT_MAX_LENGTH,
+    NAME_MAX_LENGTH,
+    SHORT_LINK_MAX_LENGTH,
+    UNIT_MAX_LENGTH
+)
 
 User = get_user_model()
+
+
+def image_file_name(instance, filename):
+    return ''.join(['recipes/images/', str(instance.pk), '_', filename])
 
 
 class Tag(TimeStampedModel):
@@ -37,16 +49,25 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
         'Recipe',
         on_delete=models.CASCADE,
-        related_name='recipe_ingredients'
+        related_name='recipe_ingredients',
+        verbose_name='Рецепт',
     )
     ingredient = models.ForeignKey(
         'Ingredient',
         on_delete=models.CASCADE,
-        related_name='recipe_ingredients'
+        related_name='recipe_ingredients',
+        verbose_name='Ингредиент',
     )
-    amount = models.DecimalField('Количество', max_digits=5, decimal_places=2)
+    amount = models.DecimalField(
+        'Количество',
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
 
     class Meta:
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
         constraints = [
             models.UniqueConstraint(
                 fields=['recipe', 'ingredient'],
@@ -54,8 +75,15 @@ class RecipeIngredient(models.Model):
             )
         ]
 
+    def __str__(self):
+        return (
+            f'{self.ingredient.name} '
+            f'({self.amount} {self.ingredient.measurement_unit}) '
+            f'для {self.recipe.name}'
+        )
 
-class Ingredient(TimeStampedModel):
+
+class Ingredient(models.Model):
     name = models.CharField(
         'Ингредиент',
         max_length=INGREDIENT_MAX_LENGTH,
@@ -82,12 +110,13 @@ class Recipe(TimeStampedModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='recipes'
+        related_name='recipes',
+        verbose_name='Автор',
     )
     name = models.CharField('Название', max_length=NAME_MAX_LENGTH)
     image = models.ImageField(
         'Изображение',
-        upload_to='recipes/images/',
+        upload_to=image_file_name,
         null=True,
         blank=True
     )
@@ -118,6 +147,40 @@ class Recipe(TimeStampedModel):
 
     def __str__(self):
         return f'Рецепт "{self.name[:10]}" от автора {self.author.username}.'
+
+
+class RecipeShortUrl(models.Model):
+    recipe = models.ForeignKey(
+        'Recipe',
+        on_delete=models.CASCADE,
+        related_name='short_link',
+        verbose_name='Рецепт',
+    )
+    slug = models.SlugField(
+        'Короткая ссылка на рецепт',
+        max_length=SHORT_LINK_MAX_LENGTH,
+        unique=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['recipe', 'slug'], name='unique_short_link'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.slug} - короткая ссылка на рецепт {self.recipe.name}.'
+
+    @staticmethod
+    def generate_slug():
+        while True:
+            slug = ''.join(
+                random.choice(string.ascii_letters+string.digits)
+                for _ in range(SHORT_LINK_MAX_LENGTH)
+            )
+            if not RecipeShortUrl.objects.filter(slug=slug).exists():
+                return slug
 
 
 class Follow(models.Model):
@@ -155,7 +218,7 @@ class Favorite(models.Model):
         related_name='favorites'
     )
     recipe = models.ForeignKey(
-        User,
+        Recipe,
         on_delete=models.CASCADE,
         related_name='added_to_favorites'
     )

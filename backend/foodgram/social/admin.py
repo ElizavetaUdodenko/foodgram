@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Ingredient, Recipe, Tag
+from .models import Ingredient, Recipe, RecipeIngredient, Tag
 
 
 class TagAdmin(admin.ModelAdmin):
@@ -17,11 +17,17 @@ class IngredientAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
+    extra = 0
+
+
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('author', 'name')
+    list_display = ('author', 'name',)
     list_display_links = ('author', 'name',)
-    search_fields = ('author', 'name',)
+    search_fields = ('author__username', 'name',)
     list_filter = ('tags',)
+    inlines = (RecipeIngredientInline,)
 
 
 admin.site.register(Tag, TagAdmin)
