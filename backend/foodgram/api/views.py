@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django_filters import AllValuesMultipleFilter, NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
@@ -134,5 +134,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
 
-def redirect_to_recipe():
-    pass
+def redirect_to_recipe(request, short_link):
+    short_link = get_object_or_404(RecipeShortUrl, slug=short_link)
+    return redirect(f'/api/recipes/{short_link.recipe.id}/')
