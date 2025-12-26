@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.http import HttpResponseBadRequest
 from django_filters import AllValuesMultipleFilter, NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from djoser.views import UserViewSet as BaseUserViewSet
@@ -8,10 +9,17 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from social.models import Ingredient, Recipe, RecipeShortUrl, Tag
+from social.models import (
+    Ingredient,
+    Favorite,
+    Recipe,
+    RecipeShortUrl,
+    Tag
+)
 from .permissions import AuthorOrReadOnly
 from .serializers import (
     AvatarUploadSerializer,
+    FavoriteSerializer,
     IngredientSerializer,
     RecipeSerializer,
     RecipeCreateSerializer,
@@ -75,7 +83,6 @@ class UserViewSet(BaseUserViewSet):
         user = request.user
         if user.avatar:
             user.delete_avatar()
-
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -120,7 +127,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
             slug=RecipeShortUrl.generate_slug()
         )
 
-    @action(detail=True, methods=['get'], url_path='get-link')
+    @action(
+        detail=True,
+        methods=['get'],
+        permission_classes=[AllowAny],
+        url_path='get-link'
+    )
     def get_short_link(self, request, pk=None):
         recipe = self.get_object()
         short_link = get_object_or_404(RecipeShortUrl, recipe=recipe)
@@ -132,6 +144,36 @@ class RecipeViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=[IsAuthenticated],
+        url_path='favorite'
+    )
+    def favorite(self, request, pk=None):
+        recipe = self.get_object()
+        _, created = Favorite.objects.get_or_create(
+            user=request.user, recipe=recipe
+        )
+        if not created:
+            return Response(
+                'Рецепт уже добавлен в избранное.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = FavoriteSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @favorite.mapping.delete
+    def delete_favorite(self, request):
+        favorite = get_object_or_404(
+            Favorite,
+            user=request.user,
+            recipe=self.get_object()
+        )
+        if favorite:
+            favorite.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def redirect_to_recipe(request, short_link):
