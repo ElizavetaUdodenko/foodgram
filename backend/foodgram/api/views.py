@@ -1,4 +1,8 @@
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django_filters import AllValuesMultipleFilter, NumberFilter
@@ -9,12 +13,26 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from social.models import Favorite, Follow, Ingredient, Recipe, RecipeShortUrl, Tag
-from core.pagination import PageNumberLimitPagination
+from social.models import (
+    Favorite,
+    Follow,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    RecipeShortUrl,
+    ShoppingCart,
+    Tag
+)
 from .permissions import AuthorOrReadOnly
-from .serializers import (AvatarUploadSerializer, RecipeShortenSerializer,
-                          IngredientSerializer, RecipeCreateSerializer,
-                          RecipeSerializer, TagSerializer, FollowSerializer)
+from .serializers import (
+    AvatarUploadSerializer,
+    FollowSerializer,
+    IngredientSerializer,
+    RecipeCreateSerializer,
+    RecipeSerializer,
+    RecipeShortenSerializer,
+    TagSerializer
+)
 
 
 User = get_user_model()
@@ -24,37 +42,35 @@ class RecipeFilter(FilterSet):
     tags = AllValuesMultipleFilter(field_name='tags__slug')
     author = NumberFilter(field_name='author__id')
     is_favorited = NumberFilter(method='filter_is_favorited')
-    # is_in_shopping_cart = NumberFilter(method='filter_is_in_shopping_cart')
+    is_in_shopping_cart = NumberFilter(method='filter_is_in_shopping_cart')
 
     class Meta:
         model = Recipe
         fields = ('tags',)
 
     def filter_is_favorited(self, queryset, name, value):
-        user = self.request.user
-        if user.is_anonymous or value != 1:
+        if self.request.user.is_anonymous or value != 1:
             return queryset
-        return queryset.filter(added_to_favorites__user=user)
+        return queryset.filter(in_favorite__user=self.request.user)
 
-    # def filter_is_in_shopping_cart(self, queryset, name, value):
-    #     user = self.request.user
-    #     if user.is_anonymous or value != 1:
-    #         return queryset
-    #     return queryset.filter(cart__user=user)
+    def filter_is_in_shopping_cart(self, queryset, name, value):
+        if self.request.user.is_anonymous or value != 1:
+            return queryset
+        return queryset.filter(in_shopping_cart__user=self.request.user)
 
 
 class UserViewSet(BaseUserViewSet):
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [AllowAny()]
+        if self.action in ('list', 'retrieve'):
+            return (AllowAny(),)
         if self.action == 'me':
-            return [IsAuthenticated()]
+            return (IsAuthenticated(),)
         return super().get_permissions()
 
     @action(
         detail=False,
-        methods=['put'],
+        methods=('put',),
         permission_classes=(IsAuthenticated,),
         url_path='me/avatar'
     )
@@ -73,9 +89,8 @@ class UserViewSet(BaseUserViewSet):
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
-        user = request.user
-        if user.avatar:
-            user.delete_avatar()
+        if request.user.avatar:
+            request.user.delete_avatar()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -107,20 +122,21 @@ class UserViewSet(BaseUserViewSet):
         url_path='subscribe',
     )
     def subscribe(self, request, id=None):
-        user = request.user
         following = self.get_object()
         recipes_limit = request.query_params.get('recipes_limit')
         if recipes_limit:
             recipes_limit = int(recipes_limit)
-        if user.pk == following.pk:
+        if request.user.pk == following.pk:
             return Response(
                 'Нельзя подписаться на самого себя.',
                 status=status.HTTP_400_BAD_REQUEST
             )
-        _, created = Follow.objects.get_or_create(user=user, follows=following)
+        _, created = Follow.objects.get_or_create(
+            user=request.user, follows=following
+        )
         if not created:
             return Response(
-                f'Пользоатель {user.username} уже подписан '
+                f'Пользоатель {request.user.username} уже подписан '
                 f'на пользователя {following.username}.',
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -137,9 +153,11 @@ class UserViewSet(BaseUserViewSet):
     def delete_subscription(self, request, id=None):
         user = request.user
         following = self.get_object()
-        deleted, _ = Follow.objects.filter(
-            user=user, follows=following
-        ).delete()
+        deleted, _ = (
+            Follow.objects
+            .filter(user=user, follows=following).
+            delete()
+        )
         if deleted == 1:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
@@ -169,13 +187,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = (AuthorOrReadOnly,)
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
+    # filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
-    # search_fields = ('author__id',)
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [AllowAny()]
+        if self.action in ('list', 'retrieve'):
+            return (AllowAny(),)
         return super().get_permissions()
 
     def get_serializer_class(self):
@@ -192,8 +210,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
-        methods=['get'],
-        permission_classes=[AllowAny],
+        methods=('get',),
+        permission_classes=(AllowAny,),
         url_path='get-link'
     )
     def get_short_link(self, request, pk=None):
@@ -210,8 +228,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
-        methods=['post'],
-        permission_classes=[IsAuthenticated],
+        methods=('post',),
+        permission_classes=(IsAuthenticated,),
         url_path='favorite'
     )
     def favorite(self, request, pk=None):
@@ -232,13 +250,86 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @favorite.mapping.delete
     def delete_favorite(self, request, pk=None):
         recipe = self.get_object()
-        deleted, _ = Favorite.objects.filter(
-            user=request.user, recipe=recipe
-        ).delete()
+        deleted, _ = (
+            Favorite.objects
+            .filter(user=request.user, recipe=recipe)
+            .delete()
+        )
         if deleted == 1:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
             'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.',
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @action(
+        detail=False,
+        methods=('get',),
+        permission_classes=(IsAuthenticated,),
+        url_path='download_shopping_cart',
+    )
+    def download_shopping_cart(self, request):
+        recipes = Recipe.objects.filter(in_shopping_cart__user=request.user)
+        ingredients = (
+            RecipeIngredient.objects
+            .filter(recipe__in=recipes)
+            .values('ingredient__name', 'ingredient__measurement_unit')
+            .annotate(amount=Sum('amount'))
+            .order_by('ingredient__name')
+        )
+
+        buffer = BytesIO()
+        text = ['Продукт — Количество\n']
+        for ingredient in ingredients:
+            text.append(
+                f'{ingredient["ingredient__name"]} — '
+                f'{ingredient["amount"]} '
+                f'{ingredient["ingredient__measurement_unit"]}'
+            )
+        text = '\n'.join(text)
+        buffer.write(text.encode('utf-8'))
+        buffer.seek(0)
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename='shopping_list.txt',
+            content_type='text/plain'
+        )
+
+    @action(
+        detail=True,
+        methods=('post',),
+        permission_classes=(IsAuthenticated,),
+        url_path='shopping_cart',
+    )
+    def shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
+        _, created = ShoppingCart.objects.get_or_create(
+            user=request.user, recipe=recipe
+        )
+        if not created:
+            return Response(
+                'Рецепт уже добавлен в список покупок.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = RecipeShortenSerializer(
+            recipe, context={'request': request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @shopping_cart.mapping.delete
+    def delete_shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
+        deleted, _ = (
+            ShoppingCart.objects
+            .filter(user=request.user, recipe=recipe)
+            .delete()
+        )
+        if deleted == 1:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            'Нельзя удалить рецепт из списка покупок. '
+            'Рецепт не был добавлен в список покупок.',
             status=status.HTTP_400_BAD_REQUEST
         )
 
