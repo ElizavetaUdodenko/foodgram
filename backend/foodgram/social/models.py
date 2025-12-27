@@ -8,13 +8,9 @@ from django.db.models import F, Q
 
 from core.models import TimeStampedModel
 
-from .constants import (
-    COOKING_TIME_MIN,
-    INGREDIENT_MAX_LENGTH,
-    NAME_MAX_LENGTH,
-    SHORT_LINK_MAX_LENGTH,
-    UNIT_MAX_LENGTH
-)
+from .constants import (COOKING_TIME_MIN, INGREDIENT_MAX_LENGTH,
+                        NAME_MAX_LENGTH, SHORT_LINK_MAX_LENGTH,
+                        UNIT_MAX_LENGTH)
 
 User = get_user_model()
 
@@ -147,6 +143,12 @@ class Recipe(TimeStampedModel):
 
     def __str__(self):
         return f'Рецепт "{self.name[:10]}" от автора {self.author.username}.'
+
+    def delete_image(self):
+        if self.image:
+            self.image.delete(save=False)
+            self.image = None
+            self.save()
 
 
 class RecipeShortUrl(models.Model):

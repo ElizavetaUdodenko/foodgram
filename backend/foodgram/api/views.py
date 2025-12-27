@@ -1,30 +1,23 @@
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.http import HttpResponseBadRequest
 from django_filters import AllValuesMultipleFilter, NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from djoser.views import UserViewSet as BaseUserViewSet
-from rest_framework import filters, mixins, status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from social.models import (
-    Ingredient,
-    Favorite,
-    Recipe,
-    RecipeShortUrl,
-    Tag
-)
+from social.models import Favorite, Follow, Ingredient, Recipe, RecipeShortUrl, Tag
+from core.pagination import PageNumberLimitPagination
 from .permissions import AuthorOrReadOnly
-from .serializers import (
-    AvatarUploadSerializer,
-    FavoriteSerializer,
-    IngredientSerializer,
-    RecipeSerializer,
-    RecipeCreateSerializer,
-    TagSerializer
-)
+from .serializers import (AvatarUploadSerializer, RecipeShortenSerializer,
+                          IngredientSerializer, RecipeCreateSerializer,
+                          RecipeSerializer, TagSerializer, FollowSerializer)
+
+
+User = get_user_model()
 
 
 class RecipeFilter(FilterSet):
@@ -84,6 +77,76 @@ class UserViewSet(BaseUserViewSet):
         if user.avatar:
             user.delete_avatar()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        methods=('get',),
+        permission_classes=(IsAuthenticated,),
+        url_path='subscriptions',
+    )
+    def subscriptions(self, request):
+        recipes_limit = request.query_params.get('recipes_limit')
+        if recipes_limit:
+            recipes_limit = int(recipes_limit)
+        following = User.objects.filter(followers__user=request.user)
+        page = self.paginate_queryset(following)
+        serializer = FollowSerializer(
+            page,
+            many=True,
+            context={
+                'request': request,
+                'recipes_limit': recipes_limit
+            }
+        )
+        return self.get_paginated_response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=('post',),
+        permission_classes=(IsAuthenticated,),
+        url_path='subscribe',
+    )
+    def subscribe(self, request, id=None):
+        user = request.user
+        following = self.get_object()
+        recipes_limit = request.query_params.get('recipes_limit')
+        if recipes_limit:
+            recipes_limit = int(recipes_limit)
+        if user.pk == following.pk:
+            return Response(
+                'Нельзя подписаться на самого себя.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        _, created = Follow.objects.get_or_create(user=user, follows=following)
+        if not created:
+            return Response(
+                f'Пользоатель {user.username} уже подписан '
+                f'на пользователя {following.username}.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = FollowSerializer(
+            following,
+            context={
+                'request': request,
+                'recipes_limit': recipes_limit
+            }
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @subscribe.mapping.delete
+    def delete_subscription(self, request, id=None):
+        user = request.user
+        following = self.get_object()
+        deleted, _ = Follow.objects.filter(
+            user=user, follows=following
+        ).delete()
+        if deleted == 1:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            f'Нельзя удалить подписку. Пользоатель {user.username} '
+            f'не подписан на пользователя {following.username}.',
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -161,19 +224,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'Рецепт уже добавлен в избранное.',
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = FavoriteSerializer(recipe)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = RecipeShortenSerializer(
+            recipe, context={'request': request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
-    def delete_favorite(self, request):
-        favorite = get_object_or_404(
-            Favorite,
-            user=request.user,
-            recipe=self.get_object()
+    def delete_favorite(self, request, pk=None):
+        recipe = self.get_object()
+        deleted, _ = Favorite.objects.filter(
+            user=request.user, recipe=recipe
+        ).delete()
+        if deleted == 1:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.',
+            status=status.HTTP_400_BAD_REQUEST
         )
-        if favorite:
-            favorite.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def redirect_to_recipe(request, short_link):

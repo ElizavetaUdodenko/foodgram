@@ -2,20 +2,12 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.core.validators import MinValueValidator
 from djoser.serializers import UserCreateSerializer as BaseCreateSerializer
 from djoser.serializers import UserSerializer as BaseSerializer
 from rest_framework import serializers
 
-from social.models import (
-    Ingredient,
-    Favorite,
-    Follow,
-    Recipe,
-    RecipeIngredient,
-    Tag
-)
-
+from social.models import (Favorite, Follow, Ingredient, Recipe,
+                           RecipeIngredient, Tag)
 
 User = get_user_model()
 
@@ -74,16 +66,11 @@ class AvatarUploadSerializer(serializers.Serializer):
     avatar = Base64ImageField(required=True, allow_null=True)
 
     def update(self, instance, validated_data):
-        data = validated_data.get('avatar')
-
+        avatar = validated_data.get('avatar')
         if instance.avatar:
-            instance.avatar.delete(save=False)
-            instance.avatar = data
-            instance.save()
-        else:
-            instance.avatar = data
-            instance.save()
-
+            instance.delete_avatar()
+        instance.avatar = avatar
+        instance.save()
         return instance
 
 
@@ -242,7 +229,10 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        instance.image = validated_data.get('image', instance.image)
+        image = validated_data.get('image', None)
+        if image and instance.image:
+            instance.delete_image()
+            instance.image = image
         instance.name = validated_data.get('name', instance.name)
         instance.text = validated_data.get('text', instance.text)
         instance.cooking_time = validated_data.get(
@@ -263,10 +253,37 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return RecipeSerializer(instance, context=self.context).data
 
 
-class FavoriteSerializer(serializers.ModelSerializer):
-    image = Base64ImageField(read_only=True)
+class RecipeShortenSerializer(serializers.ModelSerializer):
 
     class Meta():
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time',)
         read_only_fields = ('id', 'name', 'image', 'cooking_time',)
+
+
+class FollowSerializer(UserSerializer):
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = (
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name',
+            'avatar',
+            'is_subscribed',
+            'recipes',
+            'recipes_count'
+        )
+
+    def get_recipes(self, obj):
+        recipes_limit = self.context.get('recipes_limit')
+        following_user_recipes = obj.recipes.all().order_by('id')
+        if recipes_limit:
+            following_user_recipes = following_user_recipes[:recipes_limit]
+        return RecipeShortenSerializer(following_user_recipes, many=True).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
