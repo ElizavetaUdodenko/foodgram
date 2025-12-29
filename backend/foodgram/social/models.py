@@ -182,7 +182,7 @@ class RecipeShortUrl(models.Model):
     def generate_slug():
         while True:
             slug = ''.join(
-                random.choice(string.ascii_letters+string.digits)
+                random.choice(string.ascii_letters + string.digits)
                 for _ in range(SHORT_LINK_MAX_LENGTH)
             )
             if not RecipeShortUrl.objects.filter(slug=slug).exists():

@@ -25,6 +25,7 @@ from social.models import (
 )
 from .permissions import AuthorOrReadOnly
 from .serializers import (
+    UserSerializer, UserCreateSerializer,
     AvatarUploadSerializer,
     FollowSerializer,
     IngredientSerializer,
@@ -68,6 +69,17 @@ class UserViewSet(BaseUserViewSet):
             return (IsAuthenticated(),)
         return super().get_permissions()
 
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve', 'me'):
+            return UserSerializer
+        if self.action == "create":
+            return UserCreateSerializer
+        if self.action == "avatar":
+            return AvatarUploadSerializer
+        if self.action in ('subscriptions', 'subscribe'):
+            return FollowSerializer
+        return super().get_serializer_class()
+
     @action(
         detail=False,
         methods=('put',),
@@ -75,7 +87,7 @@ class UserViewSet(BaseUserViewSet):
         url_path='me/avatar'
     )
     def avatar(self, request):
-        serializer = AvatarUploadSerializer(
+        serializer = self.get_serializer(
             instance=request.user,
             data=request.data,
             context={'request': request}
@@ -105,7 +117,7 @@ class UserViewSet(BaseUserViewSet):
             recipes_limit = int(recipes_limit)
         following = User.objects.filter(followers__user=request.user)
         page = self.paginate_queryset(following)
-        serializer = FollowSerializer(
+        serializer = self.get_serializer(
             page,
             many=True,
             context={
@@ -140,7 +152,7 @@ class UserViewSet(BaseUserViewSet):
                 f'на пользователя {following.username}.',
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = FollowSerializer(
+        serializer = self.get_serializer(
             following,
             context={
                 'request': request,
@@ -187,7 +199,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = (AuthorOrReadOnly,)
-    # filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
 
@@ -199,6 +210,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
             return RecipeSerializer
+        if self.action in ('favorite', 'shopping_cart'):
+            return RecipeShortenSerializer
         return RecipeCreateSerializer
 
     def perform_create(self, serializer):
@@ -207,6 +220,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
             recipe=recipe,
             slug=RecipeShortUrl.generate_slug()
         )
+
+    def _create_relationship(self, model, user, recipe, error_message):
+        _, created = model.objects.get_or_create(user=user, recipe=recipe)
+        if not created:
+            return Response(error_message, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(
+            recipe, context={'request': self.request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _delete_relationship(self, model, user, recipe, error_message):
+        deleted, _ = model.objects.filter(user=user, recipe=recipe).delete()
+        if deleted == 1:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(error_message, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
         detail=True,
@@ -234,32 +262,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         recipe = self.get_object()
-        _, created = Favorite.objects.get_or_create(
-            user=request.user, recipe=recipe
+        return self._create_relationship(
+            Favorite,
+            request.user,
+            recipe,
+            'Рецепт уже добавлен в избранное.'
         )
-        if not created:
-            return Response(
-                'Рецепт уже добавлен в избранное.',
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        serializer = RecipeShortenSerializer(
-            recipe, context={'request': request}
-        )
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
     def delete_favorite(self, request, pk=None):
         recipe = self.get_object()
-        deleted, _ = (
-            Favorite.objects
-            .filter(user=request.user, recipe=recipe)
-            .delete()
-        )
-        if deleted == 1:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.',
-            status=status.HTTP_400_BAD_REQUEST
+        return self._delete_relationship(
+            Favorite,
+            request.user,
+            recipe,
+            'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.'
         )
 
     @action(
@@ -304,33 +321,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         recipe = self.get_object()
-        _, created = ShoppingCart.objects.get_or_create(
-            user=request.user, recipe=recipe
+        return self._create_relationship(
+            ShoppingCart,
+            request.user,
+            recipe,
+            'Рецепт уже добавлен в список покупок.'
         )
-        if not created:
-            return Response(
-                'Рецепт уже добавлен в список покупок.',
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        serializer = RecipeShortenSerializer(
-            recipe, context={'request': request}
-        )
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
     def delete_shopping_cart(self, request, pk=None):
         recipe = self.get_object()
-        deleted, _ = (
-            ShoppingCart.objects
-            .filter(user=request.user, recipe=recipe)
-            .delete()
-        )
-        if deleted == 1:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
+        return self._delete_relationship(
+            ShoppingCart,
+            request.user,
+            recipe,
             'Нельзя удалить рецепт из списка покупок. '
-            'Рецепт не был добавлен в список покупок.',
-            status=status.HTTP_400_BAD_REQUEST
+            'Рецепт не был добавлен в список покупок.'
         )
 
 

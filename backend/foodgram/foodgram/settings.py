@@ -1,12 +1,21 @@
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+from django.core.management.utils import get_random_secret_key
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-k+u!44)ac*xtmhuj3&o$ztz^%sa2dxboa=@p%qqr9x_a+=csh='
+load_dotenv()
 
+SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
+
+
+# DEBUG = os.getenv('DEBUG', 'False') == 'True'
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 
 INSTALLED_APPS = [
@@ -98,11 +107,11 @@ REST_FRAMEWORK = {
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
-    'SERIALIZERS': {
-        'user_create': 'api.serializers.UserCreateSerializer',
-        'user': 'api.serializers.UserSerializer',
-        'current_user': 'api.serializers.UserSerializer',
-    },
+    # 'SERIALIZERS': {
+    #     'user_create': 'api.serializers.UserCreateSerializer',
+    #     'user': 'api.serializers.UserSerializer',
+    #     'current_user': 'api.serializers.UserSerializer',
+    # },
     'VIEWS': {
         'user_viewset': 'api.views.UserViewSet',
     },
