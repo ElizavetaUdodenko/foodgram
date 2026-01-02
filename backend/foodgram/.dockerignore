@@ -1,0 +1,9 @@
+.idea
+.vscode
+env
+venv
+.env
+.gitkeep
+.git
+foodgram/db.sqlite3
+foodgram/.ruff_cache

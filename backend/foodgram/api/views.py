@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -342,4 +342,4 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 def redirect_to_recipe(request, short_link):
     short_link = get_object_or_404(RecipeShortUrl, slug=short_link)
-    return redirect(f'/api/recipes/{short_link.recipe.id}/')
+    return redirect(f'/recipes/{short_link.recipe.id}/')

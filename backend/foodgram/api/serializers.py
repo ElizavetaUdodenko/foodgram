@@ -195,7 +195,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     def validate_ingredients(self, value):
         ingredient_ids = []
         for ingredient in value:
-            if ingredient['amount'] <= 0:
+            if float(ingredient['amount']) <= 0:
                 raise serializers.ValidationError(
                     'Количество должно быть больше 0.'
                 )
