@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
+from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -110,15 +110,7 @@ REST_FRAMEWORK = {
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
-    'HIDE_USERS': False,
-    # 'SERIALIZERS': {
-    #     'user_create': 'api.serializers.UserCreateSerializer',
-    #     'user': 'api.serializers.UserSerializer',
-    #     'current_user': 'api.serializers.UserSerializer',
-    # },
-    'VIEWS': {
-        'user_viewset': 'api.views.UserViewSet',
-    },
+    'HIDE_USERS': False
 }
 
 LANGUAGE_CODE = 'ru'

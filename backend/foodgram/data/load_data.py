@@ -8,10 +8,17 @@ def main(file_path):
     i = 1
     output = []
     for item in res:
-        output.append({'model': 'social.ingredient', 'pk': i, 'fields': item})
+        output.append(
+            {
+                'model': 'social.ingredient',
+                'pk': i,
+                'fields': item,
+                'created_at': '2025-12-27 14:29:29.214307'
+            }
+        )
         i += 1
 
-    with open('/Users/Elizaveta/Documents/Dev/foodgram/backend/foodgram/data/new.json', 'w', encoding='utf-8') as file:
+    with open('/Users/Elizaveta/Documents/Dev/foodgram/backend/foodgram/data/data.json', 'w', encoding='utf-8') as file:
         json.dump(output, file, ensure_ascii=False)
 
 

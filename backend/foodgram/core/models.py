@@ -6,7 +6,7 @@ class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True,
         editable=False,
-        verbose_name='Добавлено'
+        verbose_name='Дата создания'
     )
 
     class Meta:

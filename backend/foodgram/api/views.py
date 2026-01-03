@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum
+from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -25,14 +25,15 @@ from social.models import (
 )
 from .permissions import AuthorOrReadOnly
 from .serializers import (
-    UserSerializer, UserCreateSerializer,
     AvatarUploadSerializer,
     FollowSerializer,
     IngredientSerializer,
     RecipeCreateSerializer,
     RecipeSerializer,
     RecipeShortenSerializer,
-    TagSerializer
+    TagSerializer,
+    UserCreateSerializer,
+    UserSerializer
 )
 
 

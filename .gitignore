@@ -1,3 +1,5 @@
+backend/foodgram/data
+backend/foodgram/.ruff_cache
 frontend/node_modules
 infra/frontend/build
 .env
