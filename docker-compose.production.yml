@@ -1,14 +1,19 @@
 volumes:
-  foodgram_db_data:
+  docs:
+  pg_data:
   static:
   media:
 
 services:
+  docs:
+    image: elizaveta855/foodgram_docs
+    volumes:
+      - docs:/docs
   db:
     image: postgres:14.20
     env_file: .env
     volumes:
-      - foodgram_db_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
   backend:
     image: elizaveta855/foodgram_backend
     env_file: .env
@@ -30,7 +35,7 @@ services:
     volumes:
       - static:/staticfiles
       - media:/media
-      - ./docs/:/usr/share/nginx/html/api/docs/
+      - docs:/usr/share/nginx/html/api/docs/
     ports:
       - 8080:80
 

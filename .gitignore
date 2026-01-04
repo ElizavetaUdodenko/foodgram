@@ -1,10 +1,9 @@
-foodgram/data/ingredients.csv
-foodgram/data/ingredients.json
-foodgram/data/load_data.py
+foodgram/fixtures/load_data.py
 foodgram/.ruff_cache
 frontend/node_modules
 infra/frontend/build
 .env
+docker-compose.initial.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
