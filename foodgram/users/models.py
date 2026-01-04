@@ -12,10 +12,6 @@ def avatar_file_name(instance, filename):
 
 class User(AbstractUser):
 
-    class Role(models.TextChoices):
-        USER = ('user', 'User',)
-        ADMIN = ('admin', 'Admin',)
-
     username = models.CharField(
         max_length=NAME_MAX_LENGTH,
         unique=True,
@@ -23,17 +19,13 @@ class User(AbstractUser):
         null=False,
         validators=[validate_not_me, UnicodeUsernameValidator()],
         help_text='Имя пользователя не может быть "me".',
+        verbose_name='Имя пользователя'
     )
     email = models.EmailField(
         max_length=EMAIL_MAX_LENGTH,
         unique=True,
         blank=False,
         null=False
-    )
-    role = models.CharField(
-        'Роль',
-        choices=Role,
-        default=Role.USER
     )
     avatar = models.ImageField(
         'Аватар',
@@ -56,11 +48,7 @@ class User(AbstractUser):
         ]
 
     def __str__(self):
-        return f'{self.pk} - {self.username} - {self.role}'
-
-    @property
-    def is_admin(self):
-        return self.role == self.Role.ADMIN or self.is_superuser
+        return self.username
 
     def delete_avatar(self):
         if self.avatar:

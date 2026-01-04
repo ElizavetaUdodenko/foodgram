@@ -10,8 +10,6 @@ class UserAdmin(admin.ModelAdmin):
         'email',
         'first_name',
         'last_name',
-        'role',
     )
-    list_filter = ('role', 'is_active',)
-    list_editable = ('role',)
+    list_filter = ('is_active',)
     search_fields = ('username', 'email',)

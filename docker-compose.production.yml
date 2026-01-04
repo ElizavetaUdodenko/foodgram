@@ -1,0 +1,36 @@
+volumes:
+  foodgram_db_data:
+  static:
+  media:
+
+services:
+  db:
+    image: postgres:14.20
+    env_file: .env
+    volumes:
+      - foodgram_db_data:/var/lib/postgresql/data
+  backend:
+    image: elizaveta855/foodgram_backend
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - static:/backend_static
+      - media:/app/media
+  frontend:
+    env_file: .env
+    image: elizaveta855/foodgram_frontend
+    volumes:
+      - static:/frontend_static
+    command: cp -r /app/build/. /frontend_static/
+  gateway:
+    image: elizaveta855/foodgram_gateway
+    depends_on:
+      - backend
+    volumes:
+      - static:/staticfiles
+      - media:/media
+      - ./docs/:/usr/share/nginx/html/api/docs/
+    ports:
+      - 8080:80
+

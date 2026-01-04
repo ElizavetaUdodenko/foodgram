@@ -1,7 +1,7 @@
-backend/foodgram/data/ingredients.csv
-backend/foodgram/data/ingredients.json
-backend/foodgram/data/load_data.py
-backend/foodgram/.ruff_cache
+foodgram/data/ingredients.csv
+foodgram/data/ingredients.json
+foodgram/data/load_data.py
+foodgram/.ruff_cache
 frontend/node_modules
 infra/frontend/build
 .env

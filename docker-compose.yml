@@ -24,30 +24,31 @@ volumes:
 services:
   db:
     image: postgres:14.20
-    env_file: ../.env
+    env_file: .env
     volumes:
       - foodgram_db_data:/var/lib/postgresql/data
   backend:
-    build: ../backend/foodgram/
-    env_file: ../.env
+    build: ./foodgram/
+    env_file: .env
     depends_on:
       - db
     volumes:
       - static:/backend_static
       - media:/app/media
   frontend:
-    env_file: ../.env
-    build: ../frontend/
+    env_file: .env
+    build: ./frontend/
     volumes:
       - static:/frontend_static
     command: cp -r /app/build/. /frontend_static/
   gateway:
-    build: ../nginx/
+    build: ./nginx/
     depends_on:
       - backend
     volumes:
       - static:/staticfiles
       - media:/media
+      - ./docs/:/usr/share/nginx/html/api/docs/
     ports:
-      - 9000:80
+      - 8080:80
 
