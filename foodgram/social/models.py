@@ -141,7 +141,7 @@ class Recipe(TimeStampedModel):
     )
     cooking_time = models.PositiveIntegerField(
         'Время приготовления',
-        validators=[MinValueValidator(COOKING_TIME_MIN),]
+        validators=[MinValueValidator(COOKING_TIME_MIN)]
     )
 
     class Meta:
