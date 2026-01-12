@@ -25,5 +25,5 @@ api_urls = [
 
 urlpatterns = [
     path('api/', include(api_urls)),
-    path('s/<slug:short_link>/', redirect_to_recipe, name='short-link-recipe'),
+    path('s/<slug:short_url>/', redirect_to_recipe, name='short-url-recipe'),
 ]

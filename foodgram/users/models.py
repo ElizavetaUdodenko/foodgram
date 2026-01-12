@@ -1,9 +1,7 @@
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 
 from .constants import EMAIL_MAX_LENGTH, NAME_MAX_LENGTH
-from .validators import validate_not_me
 
 
 def avatar_file_name(instance, filename):
@@ -12,16 +10,20 @@ def avatar_file_name(instance, filename):
 
 class User(AbstractUser):
 
-    username = models.CharField(
+    first_name = models.CharField(
+        'Имя',
         max_length=NAME_MAX_LENGTH,
-        unique=True,
         blank=False,
-        null=False,
-        validators=[validate_not_me, UnicodeUsernameValidator()],
-        help_text='Имя пользователя не может быть "me".',
-        verbose_name='Имя пользователя'
+        null=False
+    )
+    last_name = models.CharField(
+        'Фамилия',
+        max_length=NAME_MAX_LENGTH,
+        blank=False,
+        null=False
     )
     email = models.EmailField(
+        'Email',
         max_length=EMAIL_MAX_LENGTH,
         unique=True,
         blank=False,
@@ -34,24 +36,44 @@ class User(AbstractUser):
         default=None
     )
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
         ordering = ('username',)
-        constraints = [
-            models.UniqueConstraint(
-                fields=['username', 'email'],
-                name='unique_username_email'
-            )
-        ]
 
     def __str__(self):
         return self.username
 
-    def delete_avatar(self):
-        if self.avatar:
-            self.avatar.delete(save=False)
-            self.avatar = None
-            self.save()
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follows',
+        verbose_name='Пользователь'
+    )
+    follows = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followers',
+        verbose_name='Подписка'
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        ordering = ('user',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'follows'], name='unique_follow'
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('follows')),
+                name='restrict_self_follow'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} -> {self.follows.username}'

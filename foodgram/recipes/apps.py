@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class SocialConfig(AppConfig):
+class RecipesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'social'
+    name = 'recipes'
     verbose_name = 'Фудграм'

@@ -4,7 +4,6 @@ from pathlib import Path
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
@@ -33,8 +32,7 @@ INSTALLED_APPS = [
     'django_filters',
     'users.apps.UsersConfig',
     'api.apps.ApiConfig',
-    'core.apps.CoreConfig',
-    'social.apps.SocialConfig',
+    'recipes.apps.RecipesConfig',
 ]
 
 MIDDLEWARE = [
@@ -68,13 +66,17 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.postgresql',
+    #     'NAME': os.getenv('POSTGRES_DB', 'django'),
+    #     'USER': os.getenv('POSTGRES_USER', 'django_user'),
+    #     'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+    #     'HOST': os.getenv('DB_HOST', ''),
+    #     'PORT': os.getenv('DB_PORT', 5432)
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'django'),
-        'USER': os.getenv('POSTGRES_USER', 'django_user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', 5432)
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -105,14 +107,22 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'core.pagination.PageNumberLimitPagination',
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageNumberLimitPagination',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'SEARCH_PARAM': 'name',
 }
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
-    'HIDE_USERS': False
+    'HIDE_USERS': False,
+    'PERMISSIONS': {
+        "user": ['rest_framework.permissions.AllowAny'],
+        "user_list": ['rest_framework.permissions.AllowAny'],
+    },
+    'SERIALIZERS': {
+        "current_user": 'api.serializers.UserSerializer',
+        "user": 'api.serializers.UserSerializer',
+    }
 }
 
 LANGUAGE_CODE = 'ru'

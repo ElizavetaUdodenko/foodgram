@@ -1,4 +1,4 @@
-foodgram/fixtures/load_data.py
+data/create_fixtures.py
 foodgram/.ruff_cache
 frontend/node_modules
 infra/frontend/build
