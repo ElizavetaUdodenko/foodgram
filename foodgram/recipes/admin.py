@@ -32,6 +32,7 @@ class RecipeAdmin(admin.ModelAdmin):
     search_fields = ('author__username', 'name',)
     readonly_fields = ('favorites_count', 'short_url',)
     list_filter = ('tags',)
+    filter_horizontal = ('tags',)
     inlines = (RecipeIngredientInline,)
 
     @admin.display(description='Автор')

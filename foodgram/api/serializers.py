@@ -18,24 +18,22 @@ from users.models import Follow
 User = get_user_model()
 
 
-class RelationWriteMixin:
+class RelationWriteSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating user-object records for
+    Favorite, ShoppingCart, Follow models.
+    """
+
     model = None
-    context_key = None
     model_field = None
+    context_key = None
     response_serializer = None
     error_message = None
 
-    def get_user(self):
-        request = self.context.get('request')
-        return request.user
-
-    def get_related_object(self):
-        return self.context.get(self.context_key)
-
     def get_record_data(self):
         return {
-            'user': self.get_user(),
-            self.model_field: self.get_related_object()
+            'user': self.context['request'].user,
+            self.model_field: self.context[self.context_key]
         }
 
     def validate(self, attrs):
@@ -65,20 +63,11 @@ class Base64ImageField(serializers.ImageField):
 
 class UserSerializer(serializers.ModelSerializer):
 
-    is_subscribed = serializers.SerializerMethodField(read_only=True)
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'avatar',
-            'is_subscribed',
-        )
-        read_only_fields = (
             'id',
             'email',
             'username',
@@ -240,7 +229,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Ингредиенты не могут повторяться.'
             )
-
         tag_ids = [tag.pk for tag in attrs['tags']]
         if len(tag_ids) > len(set(tag_ids)):
             raise serializers.ValidationError(
@@ -298,20 +286,30 @@ class RecipeShortenSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time',)
 
 
-class FavoriteSerializer(RelationWriteMixin, serializers.Serializer):
+class FavoriteSerializer(RelationWriteSerializer):
     model = Favorite
-    context_key = 'recipe'
     model_field = 'recipe'
+    context_key = 'recipe'
     response_serializer = RecipeShortenSerializer
     error_message = 'Рецепт уже добавлен в избранное.'
 
+    class Meta:
+        model = Favorite
+        fields = ('user', 'recipe',)
+        read_only_fields = ('user', 'recipe',)
 
-class ShoppingCartSerializer(RelationWriteMixin, serializers.Serializer):
+
+class ShoppingCartSerializer(RelationWriteSerializer):
     model = ShoppingCart
-    context_key = 'recipe'
     model_field = 'recipe'
+    context_key = 'recipe'
     response_serializer = RecipeShortenSerializer
     error_message = 'Рецепт уже добавлен в список покупок.'
+
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe',)
+        read_only_fields = ('user', 'recipe',)
 
 
 class FollowReadSerializer(UserSerializer):
@@ -352,21 +350,26 @@ class FollowReadSerializer(UserSerializer):
         return obj.recipes.count()
 
 
-class FollowWriteSerializer(RelationWriteMixin, serializers.Serializer):
+class FollowWriteSerializer(RelationWriteSerializer):
     model = Follow
-    context_key = 'author'
     model_field = 'follows'
+    context_key = 'author'
     response_serializer = FollowReadSerializer
 
+    class Meta:
+        model = Follow
+        fields = ('user', 'follows',)
+        read_only_fields = ('user', 'follows',)
+
     def validate(self, attrs):
-        user = self.get_user()
-        author = self.get_related_object()
-        self.error_message = (
-            f'Пользоатель {user.username} уже подписан '
-            f'на пользователя {author.username}.'
-        )
+        user = self.context['request'].user
+        author = self.context['author']
         if user == author:
             raise serializers.ValidationError(
                 'Вы не можете подписаться на себя.'
             )
+        self.error_message = (
+            f'Пользоатель {user.username} уже подписан '
+            f'на пользователя {author.username}.'
+        )
         return super().validate(attrs)
