@@ -38,41 +38,7 @@ from .serializers import (
 User = get_user_model()
 
 
-class CreateDeleteRelationMixin:
-    def create_record(self, request, related_object, context_key):
-        serializer = self.get_serializer(
-            data={},
-            context={
-                'request': request,
-                context_key: related_object
-            }
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def delete_record(
-        self,
-        request,
-        model,
-        model_field,
-        related_object,
-        error_message
-    ):
-        deleted, _ = (
-            model.objects
-            .filter(user=request.user, **{model_field: related_object})
-            .delete()
-        )
-        if not deleted:
-            return Response(
-                error_message,
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class UserViewSet(CreateDeleteRelationMixin, BaseUserViewSet):
+class UserViewSet(BaseUserViewSet):
 
     @action(
         detail=False,
@@ -106,8 +72,7 @@ class UserViewSet(CreateDeleteRelationMixin, BaseUserViewSet):
     def delete_avatar(self, request):
         if request.user.avatar:
             request.user.avatar.delete(save=False)
-            request.user.avatar = None
-            request.user.save()
+            request.user.save(update_fields=('avatar',))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -135,25 +100,32 @@ class UserViewSet(CreateDeleteRelationMixin, BaseUserViewSet):
         url_path='subscribe',
     )
     def subscribe(self, request, id=None):
-        return self.create_record(
-            request=request,
-            related_object=self.get_object(),
-            context_key='author'
+        serializer = self.get_serializer(
+            data={
+                'user': request.user.id,
+                'follows': self.get_object().id
+            },
+            context={'request': request}
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @subscribe.mapping.delete
     def delete_subscription(self, request, id=None):
         author = self.get_object()
-        return self.delete_record(
-            request=request,
-            model=Follow,
-            model_field='follows',
-            related_object=author,
-            error_message=(
-                f'Пользователь {request.user.username} '
-                f'не подписан на пользователя {author.username}.'
-            )
+        deleted, _ = (
+            Follow.objects
+            .filter(user=request.user, follows=author)
+            .delete()
         )
+        if not deleted:
+            return Response(
+                f'Пользователь {request.user.username} '
+                f'не подписан на пользователя {author.username}.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -172,7 +144,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ('^name',)
 
 
-class RecipeViewSet(CreateDeleteRelationMixin, viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeWriteSerializer
     permission_classes = (AuthorOrReadOnly,)
@@ -204,23 +176,30 @@ class RecipeViewSet(CreateDeleteRelationMixin, viewsets.ModelViewSet):
         url_path='favorite'
     )
     def favorite(self, request, pk=None):
-        return self.create_record(
-            request=request,
-            related_object=self.get_object(),
-            context_key='recipe'
+        serializer = self.get_serializer(
+            data={
+                'user': request.user.id,
+                'recipe': self.get_object().pk
+            },
+            context={'request': request}
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
     def delete_favorite(self, request, pk=None):
-        return self.delete_record(
-            request=request,
-            model=Favorite,
-            model_field='recipe',
-            related_object=self.get_object(),
-            error_message=(
-                'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.'
-            )
+        deleted, _ = (
+            Favorite.objects
+            .filter(user=request.user, recipe=self.get_object())
+            .delete()
         )
+        if not deleted:
+            return Response(
+                'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -264,24 +243,31 @@ class RecipeViewSet(CreateDeleteRelationMixin, viewsets.ModelViewSet):
         url_path='shopping_cart',
     )
     def shopping_cart(self, request, pk=None):
-        return self.create_record(
-            request=request,
-            related_object=self.get_object(),
-            context_key='recipe'
+        serializer = self.get_serializer(
+            data={
+                'user': request.user.id,
+                'recipe': self.get_object().pk
+            },
+            context={'request': request}
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
     def delete_shopping_cart(self, request, pk=None):
-        return self.delete_record(
-            request=request,
-            model=ShoppingCart,
-            model_field='recipe',
-            related_object=self.get_object(),
-            error_message=(
-                'Нельзя удалить рецепт из списка покупок. '
-                'Рецепт не был добавлен в список покупок.'
-            )
+        deleted, _ = (
+            ShoppingCart.objects
+            .filter(user=request.user, recipe=self.get_object())
+            .delete()
         )
+        if not deleted:
+            return Response(
+                'Нельзя удалить рецепт из списка покупок. '
+                'Рецепт не был добавлен в список покупок.',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def redirect_to_recipe(request, short_url):

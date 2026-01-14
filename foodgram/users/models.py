@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from .constants import EMAIL_MAX_LENGTH, NAME_MAX_LENGTH
+from .constants import NAME_MAX_LENGTH
 
 
 def avatar_file_name(instance, filename):
@@ -24,7 +24,6 @@ class User(AbstractUser):
     )
     email = models.EmailField(
         'Email',
-        max_length=EMAIL_MAX_LENGTH,
         unique=True,
         blank=False,
         null=False

@@ -18,39 +18,6 @@ from users.models import Follow
 User = get_user_model()
 
 
-class RelationWriteSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating user-object records for
-    Favorite, ShoppingCart, Follow models.
-    """
-
-    model = None
-    model_field = None
-    context_key = None
-    response_serializer = None
-    error_message = None
-
-    def get_record_data(self):
-        return {
-            'user': self.context['request'].user,
-            self.model_field: self.context[self.context_key]
-        }
-
-    def validate(self, attrs):
-        if self.model.objects.filter(**self.get_record_data()).exists():
-            raise serializers.ValidationError(self.error_message)
-        return attrs
-
-    def create(self, validated_data):
-        return self.model.objects.create(**self.get_record_data())
-
-    def to_representation(self, instance):
-        return self.response_serializer(
-            getattr(instance, self.model_field),
-            context=self.context
-        ).data
-
-
 class Base64ImageField(serializers.ImageField):
 
     def to_internal_value(self, data):
@@ -162,18 +129,12 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             'is_in_shopping_cart',
         )
 
-    @staticmethod
-    def is_record_exist(model, user, recipe):
-        return model.objects.filter(user=user, recipe=recipe).exists()
-
     def get_is_favorited(self, obj):
         request = self.context.get('request')
         return (
             request
             and request.user.is_authenticated
-            and RecipeReadSerializer.is_record_exist(
-                Favorite, request.user, obj
-            )
+            and Favorite.objects.filter(user=request.user, recipe=obj).exists()
         )
 
     def get_is_in_shopping_cart(self, obj):
@@ -181,9 +142,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         return (
             request
             and request.user.is_authenticated
-            and RecipeReadSerializer.is_record_exist(
-                ShoppingCart, request.user, obj
-            )
+            and ShoppingCart.objects
+            .filter(user=request.user, recipe=obj)
+            .exists()
         )
 
 
@@ -262,16 +223,11 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients = validated_data.pop('recipe_ingredients', None)
         tags = validated_data.pop('tags', None)
 
-        if instance.image is not None:
-            instance.image.delete(save=False)
-
         instance = super().update(instance, validated_data)
 
-        if ingredients is not None:
-            instance.recipe_ingredients.all().delete()
-            RecipeWriteSerializer.set_ingredients(instance, ingredients)
-        if tags is not None:
-            instance.tags.set(tags)
+        instance.recipe_ingredients.all().delete()
+        RecipeWriteSerializer.set_ingredients(instance, ingredients)
+        instance.tags.set(tags)
 
         return instance
 
@@ -286,30 +242,50 @@ class RecipeShortenSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time',)
 
 
-class FavoriteSerializer(RelationWriteSerializer):
-    model = Favorite
-    model_field = 'recipe'
-    context_key = 'recipe'
-    response_serializer = RecipeShortenSerializer
-    error_message = 'Рецепт уже добавлен в избранное.'
+class FavoriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Favorite
         fields = ('user', 'recipe',)
-        read_only_fields = ('user', 'recipe',)
+
+    def validate(self, attrs):
+        if Favorite.objects.filter(**attrs).exists():
+            raise serializers.ValidationError(
+                'Рецепт уже добавлен в избранное.'
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return Favorite.objects.create(**validated_data)
+
+    def to_representation(self, instance):
+        return RecipeShortenSerializer(
+            instance.recipe,
+            context=self.context
+        ).data
 
 
-class ShoppingCartSerializer(RelationWriteSerializer):
-    model = ShoppingCart
-    model_field = 'recipe'
-    context_key = 'recipe'
-    response_serializer = RecipeShortenSerializer
-    error_message = 'Рецепт уже добавлен в список покупок.'
+class ShoppingCartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ShoppingCart
         fields = ('user', 'recipe',)
-        read_only_fields = ('user', 'recipe',)
+
+    def validate(self, attrs):
+        if ShoppingCart.objects.filter(**attrs).exists():
+            raise serializers.ValidationError(
+                'Рецепт уже добавлен в список покупок.'
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return ShoppingCart.objects.create(**validated_data)
+
+    def to_representation(self, instance):
+        return RecipeShortenSerializer(
+            instance.recipe,
+            context=self.context
+        ).data
 
 
 class FollowReadSerializer(UserSerializer):
@@ -318,13 +294,7 @@ class FollowReadSerializer(UserSerializer):
 
     class Meta(UserSerializer.Meta):
         fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'avatar',
-            'is_subscribed',
+            *UserSerializer.Meta.fields,
             'recipes',
             'recipes_count',
         )
@@ -350,26 +320,31 @@ class FollowReadSerializer(UserSerializer):
         return obj.recipes.count()
 
 
-class FollowWriteSerializer(RelationWriteSerializer):
-    model = Follow
-    model_field = 'follows'
-    context_key = 'author'
-    response_serializer = FollowReadSerializer
+class FollowWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Follow
         fields = ('user', 'follows',)
-        read_only_fields = ('user', 'follows',)
 
     def validate(self, attrs):
-        user = self.context['request'].user
-        author = self.context['author']
+        user = attrs['user']
+        author = attrs['follows']
+        if Follow.objects.filter(user=user, follows=author).exists():
+            raise serializers.ValidationError(
+                f'Пользоатель {user.username} уже подписан '
+                f'на пользователя {author.username}.'
+            )
         if user == author:
             raise serializers.ValidationError(
                 'Вы не можете подписаться на себя.'
             )
-        self.error_message = (
-            f'Пользоатель {user.username} уже подписан '
-            f'на пользователя {author.username}.'
-        )
-        return super().validate(attrs)
+        return attrs
+
+    def create(self, validated_data):
+        return Follow.objects.create(**validated_data)
+
+    def to_representation(self, instance):
+        return FollowReadSerializer(
+            instance.follows,
+            context=self.context
+        ).data

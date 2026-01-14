@@ -179,7 +179,7 @@ class Recipe(models.Model):
                 return short_url
 
     def save(self, **kwargs):
-        if not self.pk:
+        if not self.short_url:
             self.short_url = Recipe.generate_short_url()
         super().save(**kwargs)
 
