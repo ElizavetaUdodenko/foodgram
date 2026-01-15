@@ -98,7 +98,7 @@ docker compose exec backend python manage.py loaddata ../data/tags_ingredients.j
 После запуска проекта документация доступна по адресу:
 
   ```
-  http://localhost/api/docs/
+  http://localhost:8080/api/docs/
   ```
 
 ---
@@ -110,7 +110,7 @@ docker compose exec backend python manage.py loaddata ../data/tags_ingredients.j
 **POST**
 
 ```
-http://localhost/api/recipes/{id}/favorite/
+http://localhost:8080/api/recipes/{id}/favorite/
 ```
 
 **Ответ — 201 CREATED**
@@ -131,7 +131,7 @@ http://localhost/api/recipes/{id}/favorite/
 **DELETE**
 
 ```
-http://localhost/api/recipes/{id}/favorite/
+http://localhost:8080/api/recipes/{id}/favorite/
 ```
 
 **Ответ — 204 NO CONTENT**
@@ -143,7 +143,7 @@ http://localhost/api/recipes/{id}/favorite/
 **POST**
 
 ```
-http://localhost/api/users/{id}/subscribe/
+http://localhost:8080/api/users/{id}/subscribe/
 ```
 
 **Ответ — 201 CREATED**
@@ -176,7 +176,7 @@ http://localhost/api/users/{id}/subscribe/
 **GET**
 
 ```
-http://localhost/api/recipes/download_shopping_cart/
+http://localhost:8080/api/recipes/download_shopping_cart/
 ```
 
 **Ответ:**
@@ -190,3 +190,4 @@ http://localhost/api/recipes/download_shopping_cart/
 
 ```
 ```
+
