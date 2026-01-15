@@ -188,6 +188,3 @@ http://localhost:8080/api/recipes/download_shopping_cart/
 
 Елизавета Удоденко
 
-```
-```
-
