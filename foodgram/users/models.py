@@ -12,21 +12,15 @@ class User(AbstractUser):
 
     first_name = models.CharField(
         'Имя',
-        max_length=NAME_MAX_LENGTH,
-        blank=False,
-        null=False
+        max_length=NAME_MAX_LENGTH
     )
     last_name = models.CharField(
         'Фамилия',
-        max_length=NAME_MAX_LENGTH,
-        blank=False,
-        null=False
+        max_length=NAME_MAX_LENGTH
     )
     email = models.EmailField(
         'Email',
-        unique=True,
-        blank=False,
-        null=False
+        unique=True
     )
     avatar = models.ImageField(
         'Аватар',

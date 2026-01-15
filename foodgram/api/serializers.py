@@ -255,9 +255,6 @@ class FavoriteSerializer(serializers.ModelSerializer):
             )
         return attrs
 
-    def create(self, validated_data):
-        return Favorite.objects.create(**validated_data)
-
     def to_representation(self, instance):
         return RecipeShortenSerializer(
             instance.recipe,
@@ -277,9 +274,6 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
                 'Рецепт уже добавлен в список покупок.'
             )
         return attrs
-
-    def create(self, validated_data):
-        return ShoppingCart.objects.create(**validated_data)
 
     def to_representation(self, instance):
         return RecipeShortenSerializer(
@@ -339,9 +333,6 @@ class FollowWriteSerializer(serializers.ModelSerializer):
                 'Вы не можете подписаться на себя.'
             )
         return attrs
-
-    def create(self, validated_data):
-        return Follow.objects.create(**validated_data)
 
     def to_representation(self, instance):
         return FollowReadSerializer(
