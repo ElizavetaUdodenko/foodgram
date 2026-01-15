@@ -6,7 +6,7 @@ volumes:
 
 services:
   docs:
-    image: elizaveta855/foodgram_docs
+    image: elizaveta855/foodgram_docs:latest
     volumes:
       - docs:/docs
   db:
@@ -15,7 +15,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
   backend:
-    image: elizaveta855/foodgram_backend
+    image: elizaveta855/foodgram_backend:latest
     env_file: .env
     depends_on:
       - db
@@ -24,12 +24,12 @@ services:
       - media:/app/media
   frontend:
     env_file: .env
-    image: elizaveta855/foodgram_frontend
+    image: elizaveta855/foodgram_frontend:latest
     volumes:
       - static:/frontend_static
     command: cp -r /app/build/. /frontend_static/
   gateway:
-    image: elizaveta855/foodgram_gateway
+    image: elizaveta855/foodgram_gateway:latest
     depends_on:
       - backend
     volumes:
