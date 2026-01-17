@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
+from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -145,11 +145,38 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all()
     serializer_class = RecipeWriteSerializer
     permission_classes = (AuthorOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
+
+    def get_queryset(self):
+        user = self.request.user
+        recipes = (
+            Recipe.objects
+            .select_related('author')
+            .prefetch_related(
+                'tags',
+                'recipe_ingredients__ingredient'
+            )
+        )
+        if user.is_authenticated:
+            recipes = recipes.annotate(
+                is_favorited=Exists(
+                    Favorite.objects.filter(
+                        user=user,
+                        recipe=OuterRef('pk')
+                    )
+                ),
+                is_in_shopping_cart=Exists(
+                    ShoppingCart.objects.filter(
+                        user=user,
+                        recipe=OuterRef('pk')
+                    )
+                )
+            )
+
+        return recipes
 
     @action(
         detail=True,
