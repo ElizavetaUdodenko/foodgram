@@ -83,7 +83,11 @@ class UserViewSet(BaseUserViewSet):
         url_path='subscriptions',
     )
     def subscriptions(self, request):
-        following = User.objects.filter(followers__user=request.user)
+        following = (
+            User.objects
+            .filter(followers__user=request.user)
+            .prefetch_related('recipes')
+        )
         page = self.paginate_queryset(following)
         serializer = self.get_serializer(
             page,
@@ -235,10 +239,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         url_path='download_shopping_cart',
     )
     def download_shopping_cart(self, request):
-        recipes = Recipe.objects.filter(in_shopping_cart__user=request.user)
         ingredients = (
             RecipeIngredient.objects
-            .filter(recipe__in=recipes)
+            .filter(recipe__in_shopping_cart__user=request.user)
             .values('ingredient__name', 'ingredient__measurement_unit')
             .annotate(amount=Sum('amount'))
             .order_by('ingredient__name')
