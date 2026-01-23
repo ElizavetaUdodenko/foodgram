@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
-from django.db.models import Exists, OuterRef, Sum
+from django.db.models import Count, Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -39,6 +39,21 @@ User = get_user_model()
 
 
 class UserViewSet(BaseUserViewSet):
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return (
+                User.objects.annotate(
+                    is_subscribed=Exists(
+                        Follow.objects.filter(
+                            user=user,
+                            follows=OuterRef('pk')
+                        )
+                    )
+                )
+            )
+        return super().get_queryset()
 
     @action(
         detail=False,
@@ -87,6 +102,9 @@ class UserViewSet(BaseUserViewSet):
             User.objects
             .filter(followers__user=request.user)
             .prefetch_related('recipes')
+            .annotate(
+                recipes_count=Count('recipes')
+            )
         )
         page = self.paginate_queryset(following)
         serializer = self.get_serializer(
@@ -125,8 +143,8 @@ class UserViewSet(BaseUserViewSet):
         )
         if not deleted:
             return Response(
-                f'Пользователь {request.user.username} '
-                f'не подписан на пользователя {author.username}.',
+                f'A user {request.user.username} '
+                f'has not subscribed to a user {author.username}.',
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -227,7 +245,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         if not deleted:
             return Response(
-                'Нельзя удалить рецепт. Рецепт не был добавлен в избранное.',
+                'You cannot delete the recipe.'
+                'The recipe is not in the favorite list.',
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -293,8 +312,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         if not deleted:
             return Response(
-                'Нельзя удалить рецепт из списка покупок. '
-                'Рецепт не был добавлен в список покупок.',
+                'You cannot delete the recipe.'
+                'The recipe is not in the shopping cart.',
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response(status=status.HTTP_204_NO_CONTENT)

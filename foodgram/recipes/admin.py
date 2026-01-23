@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 
 from .models import Ingredient, Recipe, RecipeIngredient, Tag
 
@@ -24,6 +25,10 @@ class RecipeIngredientInline(admin.TabularInline):
     extra = 0
     min_num = 1
 
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('ingredient')
+
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
@@ -35,10 +40,17 @@ class RecipeAdmin(admin.ModelAdmin):
     filter_horizontal = ('tags',)
     inlines = (RecipeIngredientInline,)
 
-    @admin.display(description='Автор')
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return (
+            queryset.select_related('author')
+            .annotate(favorites_count=Count('in_favorite'))
+        )
+
+    @admin.display(description='Author')
     def author_username(self, obj):
         return obj.author.username
 
-    @admin.display(description='В избранном')
+    @admin.display(description='In Favorite')
     def favorites_count(self, obj):
-        return obj.in_favorite.count()
+        return obj.favorites_count

@@ -11,11 +11,11 @@ def avatar_file_name(instance, filename):
 class User(AbstractUser):
 
     first_name = models.CharField(
-        'Имя',
+        'First Name',
         max_length=NAME_MAX_LENGTH
     )
     last_name = models.CharField(
-        'Фамилия',
+        'Last Name',
         max_length=NAME_MAX_LENGTH
     )
     email = models.EmailField(
@@ -23,7 +23,7 @@ class User(AbstractUser):
         unique=True
     )
     avatar = models.ImageField(
-        'Аватар',
+        'Avatar',
         upload_to=avatar_file_name,
         null=True,
         default=None
@@ -32,8 +32,8 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     class Meta:
-        verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'
         ordering = ('username',)
 
     def __str__(self):
@@ -45,18 +45,18 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='follows',
-        verbose_name='Пользователь'
+        verbose_name='User'
     )
     follows = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='followers',
-        verbose_name='Подписка'
+        verbose_name='Subscription'
     )
 
     class Meta:
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
+        verbose_name = 'Subscription'
+        verbose_name_plural = 'Subscriptions'
         ordering = ('user',)
         constraints = [
             models.UniqueConstraint(

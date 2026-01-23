@@ -30,7 +30,7 @@ class Base64ImageField(serializers.ImageField):
 
 class UserSerializer(serializers.ModelSerializer):
 
-    is_subscribed = serializers.SerializerMethodField()
+    is_subscribed = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = User
@@ -42,18 +42,6 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'avatar',
             'is_subscribed',
-        )
-
-    def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        return (
-            request
-            and request.user.is_authenticated
-            and (
-                Follow.objects
-                .filter(user=request.user, follows=obj)
-                .exists()
-            )
         )
 
 
@@ -162,9 +150,9 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if 'recipe_ingredients' not in attrs:
-            raise serializers.ValidationError('Добавьте ингредиенты.')
+            raise serializers.ValidationError('Add ingredients.')
         if 'tags' not in attrs:
-            raise serializers.ValidationError('Добавьте теги.')
+            raise serializers.ValidationError('Add tags.')
 
         ingredient_ids = [
             ingredient_data['ingredient'].pk
@@ -172,12 +160,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ]
         if len(ingredient_ids) > len(set(ingredient_ids)):
             raise serializers.ValidationError(
-                'Ингредиенты не могут повторяться.'
+                'Ingredients should be unique.'
             )
         tag_ids = [tag.pk for tag in attrs['tags']]
         if len(tag_ids) > len(set(tag_ids)):
             raise serializers.ValidationError(
-                'Теги не могут повторяться.'
+                'Tags should be unique.'
             )
 
         return super().validate(attrs)
@@ -209,7 +197,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
         instance = super().update(instance, validated_data)
 
-        instance.recipe_ingredients.all().delete()
+        RecipeIngredient.objects.filter(recipe=instance).delete()
         RecipeWriteSerializer.set_ingredients(instance, ingredients)
         instance.tags.set(tags)
 
@@ -235,7 +223,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if Favorite.objects.filter(**attrs).exists():
             raise serializers.ValidationError(
-                'Рецепт уже добавлен в избранное.'
+                'The recipe is already added in the Favorite list.'
             )
         return attrs
 
@@ -255,7 +243,7 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if ShoppingCart.objects.filter(**attrs).exists():
             raise serializers.ValidationError(
-                'Рецепт уже добавлен в список покупок.'
+                'The recipe is already added in the Shopping Cart.'
             )
         return attrs
 
@@ -309,12 +297,12 @@ class FollowWriteSerializer(serializers.ModelSerializer):
         author = attrs['follows']
         if Follow.objects.filter(user=user, follows=author).exists():
             raise serializers.ValidationError(
-                f'Пользоатель {user.username} уже подписан '
-                f'на пользователя {author.username}.'
+                f'A user {user.username} has already subscribed to '
+                f'a user {author.username}.'
             )
         if user == author:
             raise serializers.ValidationError(
-                'Вы не можете подписаться на себя.'
+                'You cannot subscribe to yourself.'
             )
         return attrs
 
