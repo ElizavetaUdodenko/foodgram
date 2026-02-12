@@ -12,14 +12,22 @@ class RecipeFilter(FilterSet):
 
     class Meta:
         model = Recipe
-        fields = ('tags', 'author', 'is_favorited', 'is_in_shopping_cart', )
+        fields = ('tags', 'author', )
 
     def filter_is_favorited(self, queryset, name, value):
-        if not (self.request.user.is_authenticated and value == 1):
+        if not self.request.user.is_authenticated:
             return queryset
-        return queryset.filter(in_favorite__user=self.request.user)
+        filter_map = {
+            1: queryset.filter(in_favorite__user=self.request.user),
+            0: queryset.exclude(in_favorite__user=self.request.user)
+        }
+        return filter_map.get(value, queryset)
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
-        if not (self.request.user.is_authenticated and value == 1):
+        if not self.request.user.is_authenticated:
             return queryset
-        return queryset.filter(in_shopping_cart__user=self.request.user)
+        filter_map = {
+            1: queryset.filter(in_shopping_cart__user=self.request.user),
+            0: queryset.exclude(in_shopping_cart__user=self.request.user)
+        }
+        return filter_map.get(value, queryset)
